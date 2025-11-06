@@ -1,17 +1,17 @@
 import express from "express";
 import admin from "firebase-admin";
 import dotenv from "dotenv";
-import fs from "fs";
 
 dotenv.config();
 const app = express();
 app.use(express.json());
 
 // Inicializar Firebase
-const serviceAccount = JSON.parse(fs.readFileSync("./serviceAccountKey.json"));
+const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: process.env.FIREBASE_URL
+  databaseURL: "https://tu-proyecto.firebaseio.com",
 });
 
 const db = admin.database();
