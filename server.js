@@ -11,7 +11,7 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://tu-proyecto.firebaseio.com",
+  databaseURL: "https://rastreo-gps-f15f7-default-rtdb.firebaseio.com/",
 });
 
 const db = admin.database();
