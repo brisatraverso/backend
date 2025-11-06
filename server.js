@@ -1,30 +1,53 @@
 import express from "express";
-import axios from "axios";
+import admin from "firebase-admin";
 import dotenv from "dotenv";
+import fs from "fs";
 
 dotenv.config();
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-const FIREBASE_URL = process.env.FIREBASE_URL; // viene del .env
+// Inicializar Firebase
+const serviceAccount = JSON.parse(fs.readFileSync("./serviceAccountKey.json"));
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: process.env.FIREBASE_URL
+});
 
+const db = admin.database();
+
+// Endpoint para recibir datos
 app.post("/api/datos", async (req, res) => {
   try {
-    const { lat, lng, ax, ay, az } = req.body;
-    console.log("Datos recibidos:", req.body);
+    const { lat, lng, ax, ay, az, timestamp } = req.body;
 
-    // timestamp para registrar en Firebase
-    const timestamp = new Date().toISOString();
-    const datos = { lat, lng, ax, ay, az, timestamp };
+    if (!lat || !lng) {
+      return res.status(400).json({ error: "Datos GPS inválidos" });
+    }
 
-    // Envio a Firebase
-    await axios.post(`${FIREBASE_URL}/datos.json`, datos);
-    res.status(200).json({ message: "Datos enviados a Firebase correctamente" });
-  } catch (err) {
-    console.error("Error:", err.message);
-    res.status(500).json({ error: "Error al enviar a Firebase" });
+    const ref = db.ref("vehiculos/vehiculo1");
+    const newRef = ref.push();
+
+    await newRef.set({
+      lat,
+      lng,
+      ax,
+      ay,
+      az,
+      timestamp: timestamp || new Date().toISOString(),
+    });
+
+    res.status(200).json({ message: "Datos guardados correctamente" });
+  } catch (error) {
+    console.error("Error al guardar en Firebase:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
+// Prueba de conexión
+app.get("/", (req, res) => {
+  res.send("Backend funcionando correctamente 🚀");
+});
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`Servidor funcionando en puerto ${PORT}`));
