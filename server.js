@@ -1,24 +1,50 @@
-import express from "express";
-import { db, ref, set } from "./firebase.js";
+import express from 'express'
+import admin from 'firebase-admin'
+import dotenv from 'dotenv'
 
-const app = express();
-app.use(express.json());
+dotenv.config()
+const app = express()
+app.use(express.json())
 
-app.post("/gps", (req, res) => {
-  const { deviceId, lat, lng, speed, timestamp } = req.body;
+// Inicializar Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert({
+    project_id: process.env.FIREBASE_PROJECT_ID,
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+  }),
+  databaseURL: process.env.FIREBASE_DB_URL
+})
 
-  if (!deviceId || !lat || !lng) {
-    return res.status(400).json({ msg: "Datos incompletos" });
+const db = admin.database()
+
+// RUTA TEST 🧪
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Backend ok' })
+})
+
+// RUTA PARA GUARDAR DATOS DEL GPS 📍⚙️
+app.post('/api/datos', async (req, res) => {
+  try {
+    const { lat, lng, ax, ay, az } = req.body
+
+    const ref = db.ref('gps/datos')
+    await ref.push({
+      lat,
+      lng,
+      ax,
+      ay,
+      az,
+      timestamp: Date.now()
+    })
+
+    res.status(200).json({ status: 'ok' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
   }
+})
 
-  set(ref(db, "devices/" + deviceId), {
-    lat,
-    lng,
-    speed,
-    timestamp: timestamp ?? Date.now(),
-  })
-  .then(() => res.status(200).json({ msg: "OK" }))
-  .catch((err) => res.status(500).json({ error: err.message }));
-});
-
-app.listen(3000, () => console.log("Backend OK en puerto 3000"));
+const PORT = process.env.PORT || 3000
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en puerto ${PORT}`)
+})
