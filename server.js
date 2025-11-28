@@ -16,6 +16,29 @@ admin.initializeApp({
 });
 
 const db = admin.database();
+
+app.post("/gps", async (req, res) => {
+  try {
+    const { lat, lng, timestamp } = req.body;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ error: "Faltan lat y lng" });
+    }
+
+    await db.ref("gpsData").push({
+      lat,
+      lng,
+      timestamp: timestamp || Date.now()
+    });
+
+    res.status(200).json({ message: "Datos guardados correctamente" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al guardar los datos" });
+  }
+});
+
 const app = express();
 
 app.use(cors());
