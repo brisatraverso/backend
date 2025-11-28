@@ -16,6 +16,10 @@ admin.initializeApp({
 });
 
 const db = admin.database();
+const app = express();
+
+app.use(cors());
+app.use(express.json());
 
 app.post("/gps", async (req, res) => {
   try {
@@ -39,14 +43,10 @@ app.post("/gps", async (req, res) => {
   }
 });
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
 
 // RUTA TEST
 app.get("/api/test", (req, res) => {
-  res.json({ ok: true, message: "Backend is LIVE " });
+  res.json({ ok: true, message: "Backend is LIVE" });
 });
 
 // GUARDAR DATOS
