@@ -1,12 +1,9 @@
-import express from 'express'
-import admin from 'firebase-admin'
-import dotenv from 'dotenv'
+import express from "express";
+import admin from "firebase-admin";
+import cors from "cors";
+import dotenv from "dotenv";
 
-dotenv.config()
-const app = express()
-app.use(express.json())
-
-const admin = require('firebase-admin');
+dotenv.config();
 
 // Inicializar Firebase Admin
 admin.initializeApp({
@@ -15,38 +12,37 @@ admin.initializeApp({
     client_email: process.env.FIREBASE_CLIENT_EMAIL,
     private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
   }),
-  databaseURL: process.env.FIREBASE_DB_URL
-})
+  databaseURL: process.env.FIREBASE_DATABASE_URL
+});
 
-const db = admin.database()
+const db = admin.database();
+const app = express();
 
-// RUTA TEST 🧪
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'Backend ok' })
-})
+app.use(cors());
+app.use(express.json());
 
-// RUTA PARA GUARDAR DATOS DEL GPS 📍⚙️
-app.post('/api/datos', async (req, res) => {
+// RUTA TEST
+app.get("/api/test", (req, res) => {
+  res.json({ ok: true, message: "Backend is LIVE " });
+});
+
+// GUARDAR DATOS
+app.post("/api/datos", async (req, res) => {
   try {
-    const { lat, lng, ax, ay, az } = req.body
-
-    const ref = db.ref('gps/datos')
-    await ref.push({
-      lat,
-      lng,
-      ax,
-      ay,
-      az,
+    const data = req.body;
+    await db.ref("datos").push({
+      ...data,
       timestamp: Date.now()
-    })
-
-    res.status(200).json({ status: 'ok' })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
+    });
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
-})
+});
 
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`)
-})
+// PUERTO PARA DEPLOY
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`Backend running on port ${PORT}`)
+);
