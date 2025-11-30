@@ -21,35 +21,36 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/*
- 📌 Ruta principal: recibe datos del rastreador GPS
- Guarda:
- 1️⃣ Último dato: /datos/{deviceId}
- 2️⃣ Historial diario: /historial/{deviceId}/{YYYY-MM-DD}/pushId
-*/
+// server.js (fragmento completo de /gps)
 app.post("/gps", async (req, res) => {
   try {
     const { deviceId = "vehiculo1", lat, lng, timestamp } = req.body;
 
+    // Validación básica: lat/lng deben existir y no ser 0
     if (lat === undefined || lng === undefined) {
       return res.status(400).json({ error: "Faltan datos GPS" });
     }
+    const latN = Number(lat);
+    const lngN = Number(lng);
+    if (!isFinite(latN) || !isFinite(lngN) || latN === 0 || lngN === 0) {
+      return res.status(400).json({ error: "Coordenadas inválidas" });
+    }
 
-    // Normalizar timestamp a milisegundos
+    // Normalizar timestamp a ms
     let ts = timestamp !== undefined && timestamp !== null ? Number(timestamp) : Date.now();
     if (ts < 1e12) ts = ts * 1000;
 
     const point = {
-      lat: Number(lat),
-      lng: Number(lng),
+      lat: latN,
+      lng: lngN,
       timestamp: ts,
     };
 
-    // Guardar el último punto
+    // 1) Guardar ÚLTIMO punto en datos/{deviceId} (objeto único, no push)
     await db.ref(`datos/${deviceId}`).set(point);
 
-    // Guardar en historial por día
-    const dateKey = new Date(ts).toISOString().split("T")[0];
+    // 2) Guardar en historial por día (push)
+    const dateKey = new Date(ts).toISOString().split("T")[0]; // YYYY-MM-DD
     await db.ref(`historial/${deviceId}/${dateKey}`).push(point);
 
     return res.json({ ok: true, deviceId });
@@ -58,6 +59,7 @@ app.post("/gps", async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
+
 
 // Ruta para verificar que el backend responde correctamente
 app.get("/api/test", (req, res) => {
