@@ -1,54 +1,37 @@
 import express from "express";
-import admin from "firebase-admin";
 import cors from "cors";
+import admin from "firebase-admin";
 import dotenv from "dotenv";
 
 dotenv.config();
-
-// Inicializar Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert({
-    project_id: process.env.FIREBASE_PROJECT_ID,
-    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
-  databaseURL: process.env.FIREBASE_DATABASE_URL,
-});
-
-const db = admin.database();
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
-// Ruta principal para guardar datos GPS
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+    databaseURL: "https://rastreo-gps-f15f7-default-rtdb.firebaseio.com"
+  });
+}
+
+const db = admin.database();
+
 app.post("/gps", async (req, res) => {
-  try {
-    const { lat, lng } = req.body;
+  const { deviceId, lat, lng, timestamp } = req.body;
 
-    if (lat === undefined || lng === undefined) {
-      return res.status(400).json({ error: "Faltan datos GPS" });
-    }
-
-    const point = {
-      lat: Number(lat),
-      lng: Number(lng),
-      timestamp: Date.now(), // 🔥 Generado por servidor
-    };
-
-    await db.ref("datos/vehiculo1").set(point);
-
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error("Error POST /gps:", err);
-    return res.status(500).json({ error: err.message });
+  if (!deviceId || lat == null || lng == null) {
+    return res.status(400).json({ error: "Faltan datos GPS" });
   }
+
+  await db.ref(`datos/${deviceId}`).set({
+    lat,
+    lng,
+    timestamp: timestamp || Date.now()
+  });
+
+  res.json({ message: "Datos recibidos correctamente" });
 });
 
-// Test backend
-app.get("/api/test", (req, res) => {
-  res.json({ ok: true, message: "Backend LIVE" });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+app.get("/", (req, res) => res.send("API OK"));
+app.listen(3000, () => console.log("Servidor escuchando en puerto 3000"));
